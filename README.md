@@ -10,6 +10,9 @@
 ![Tone.js](https://img.shields.io/badge/Tone.js-000000)
 ![Web MIDI](https://img.shields.io/badge/Web%20MIDI-ready-4cc38a)
 ![Vitest](https://img.shields.io/badge/tests-Vitest-6E9F18?logo=vitest&logoColor=white)
+[![Deploy](https://github.com/moanatari/xChordController/actions/workflows/deploy.yml/badge.svg)](https://github.com/moanatari/xChordController/actions/workflows/deploy.yml)
+
+### [▶️ Jouer en ligne](https://moanatari.github.io/xChordController/)
 
 </div>
 
@@ -30,16 +33,9 @@
 
 ## 🚀 Démarrage rapide
 
-**Prérequis :** [Node.js](https://nodejs.org) 22 ou plus récent, et **Chrome** ou **Edge** (pour la Gamepad API et la Web MIDI API).
+Rien à installer : l'app tourne directement dans le navigateur.
 
-```bash
-npm install
-npm run dev
-```
-
-Ensuite :
-
-1. Ouvre **http://localhost:5173** dans Chrome ou Edge.
+1. Ouvre **[moanatari.github.io/xChordController](https://moanatari.github.io/xChordController/)** dans **Chrome** ou **Edge** (nécessaires pour la Gamepad API et la Web MIDI API).
 2. Branche la manette Xbox One en **USB ou en Bluetooth**, puis **appuie sur n'importe quel bouton** : le navigateur ne la détecte qu'après une première pression.
 3. Clique sur **Démarrer** : les navigateurs exigent un clic avant de jouer du son.
 4. Appuie sur **A**, c'est un accord de Do majeur 🎶
@@ -190,7 +186,18 @@ Le dossier `core/` ne dépend ni du navigateur ni de l'audio. On peut donc le te
 
 ---
 
-## 🛠️ Scripts
+## 🛠️ Développer
+
+**Prérequis :** [Node.js](https://nodejs.org) 22 ou plus récent.
+
+```bash
+git clone https://github.com/moanatari/xChordController.git
+cd xChordController
+npm install
+npm run dev
+```
+
+Vite affiche l'adresse du serveur de développement : ouvre-la dans Chrome ou Edge.
 
 | Commande | Rôle |
 |---|---|
@@ -198,18 +205,18 @@ Le dossier `core/` ne dépend ni du navigateur ni de l'audio. On peut donc le te
 | `npm test` | Tests unitaires (Vitest) |
 | `npm run test:watch` | Tests en mode watch |
 | `npm run build` | Typecheck et build de production dans `dist/` |
-| `npm run preview` | Sert le build de production en local |
+| `npm run preview` | Sert le build de production |
 
 ---
 
 ## 🌐 Déploiement (GitHub Pages)
 
-L'app est entièrement statique : elle se publie telle quelle sur GitHub Pages, qui sert en HTTPS (obligatoire pour la manette et le MIDI).
+L'app est entièrement statique et publiée sur GitHub Pages, qui sert en HTTPS (obligatoire pour la manette et le MIDI).
 
-1. Pousse le projet sur la branche `main` d'un dépôt GitHub.
-2. Dans le dépôt, va dans *Settings › Pages* et choisis **Source : GitHub Actions**.
-3. Le workflow `.github/workflows/deploy.yml` lance les tests, build le projet et publie `dist/` à chaque push sur `main`.
-4. L'app est ensuite en ligne sur `https://<utilisateur>.github.io/<dépôt>/`, à ouvrir dans Chrome ou Edge.
+À chaque push sur `main`, le workflow [`deploy.yml`](./.github/workflows/deploy.yml) lance les tests, build le projet et publie `dist/` sur [moanatari.github.io/xChordController](https://moanatari.github.io/xChordController/).
+
+> [!NOTE]
+> Sur un fork, active le déploiement dans *Settings › Pages* avec **Source : GitHub Actions**. L'app sera alors en ligne sur `https://<utilisateur>.github.io/<dépôt>/`.
 
 ---
 
