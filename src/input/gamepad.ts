@@ -15,6 +15,16 @@ export class GamepadInput {
   private stick = new StickQuantizer();
   private index: number | null = null;
   name: string | null = null;
+  /** Raw left-stick position (y up), null when no gamepad is connected. */
+  left: { x: number; y: number } | null = null;
+
+  get deadzone(): number {
+    return this.stick.deadzone;
+  }
+
+  set deadzone(value: number) {
+    this.stick.deadzone = value;
+  }
 
   constructor(
     private mapping: Record<number, ButtonBinding>,
@@ -42,7 +52,8 @@ export class GamepadInput {
     });
 
     const before = this.stick.current;
-    const direction = this.stick.update(pad.axes[XBOX_AXES.leftX], -pad.axes[XBOX_AXES.leftY]);
+    this.left = { x: pad.axes[XBOX_AXES.leftX], y: -pad.axes[XBOX_AXES.leftY] };
+    const direction = this.stick.update(this.left.x, this.left.y);
     if (direction !== before) this.emit({ t: 'stick', direction });
 
     const rx = pad.axes[XBOX_AXES.rightX];
@@ -66,7 +77,8 @@ export class GamepadInput {
     this.pressed.forEach((was, i) => was && this.fire(i, false));
     this.pressed = [];
     if (this.stick.current !== null) this.emit({ t: 'stick', direction: null });
-    this.stick = new StickQuantizer();
+    this.stick = new StickQuantizer(this.stick.deadzone);
+    this.left = null;
     this.index = null;
     this.name = null;
   }

@@ -1,9 +1,12 @@
 import { DIRECTIONS, type Direction } from '../core/modifiers';
 
-/** Deflection needed to enter a direction from the centre. */
-export const ENTER_THRESHOLD = 0.5;
+/** Default deadzone: deflection needed to enter a direction from the centre. */
+export const DEFAULT_DEADZONE = 0.5;
+export const DEADZONE_RANGE = { min: 0.15, max: 0.85 } as const;
+/** The stick returns to the centre below this fraction of the deadzone (magnitude hysteresis). */
+const EXIT_RATIO = 0.7;
 /** Deflection below which the stick is considered back at the centre. */
-export const EXIT_THRESHOLD = 0.35;
+export const exitThreshold = (deadzone: number) => deadzone * EXIT_RATIO;
 /** Extra degrees past a sector edge before switching direction, to avoid flicker on diagonals. */
 export const ANGLE_HYSTERESIS = 10;
 
@@ -28,13 +31,15 @@ const angularDistance = (a: number, b: number) => {
 export class StickQuantizer {
   current: Direction | null = null;
 
+  constructor(public deadzone = DEFAULT_DEADZONE) {}
+
   update(x: number, y: number): Direction | null {
     const magnitude = Math.hypot(x, y);
     if (this.current === null) {
-      if (magnitude >= ENTER_THRESHOLD) this.current = directionFromAngle(angleOf(x, y));
+      if (magnitude >= this.deadzone) this.current = directionFromAngle(angleOf(x, y));
       return this.current;
     }
-    if (magnitude < EXIT_THRESHOLD) {
+    if (magnitude < exitThreshold(this.deadzone)) {
       this.current = null;
       return null;
     }

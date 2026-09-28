@@ -85,6 +85,6 @@ It must not import Tone.js or touch any DOM or browser API. It is the portable s
 - `input/mapping.ts` holds the Xbox button layout, using the W3C "standard" gamepad indices. `chordButtonLabels()` feeds the UI pad labels from it.
 - The analog triggers (LT/RT) use press/release thresholds with hysteresis.
 - `StickQuantizer` (`input/stick.ts`) applies hysteresis twice:
-  - on magnitude: enter the direction at 0.5, leave it below 0.35;
+  - on magnitude: enter the direction past the deadzone (0.5 by default, user-adjustable in the UI and saved in `localStorage` by `main.ts`), leave it below 70 % of the deadzone;
   - on angle: ±10° past a sector edge before switching direction.
 - The y axis is flipped to up-positive before it reaches the quantizer.

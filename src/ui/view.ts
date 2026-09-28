@@ -10,12 +10,21 @@ import {
   type State,
 } from '../core/state';
 import { DEGREE_COUNT, ROMAN_NUMERALS, noteName } from '../core/theory';
+import { DEADZONE_RANGE, exitThreshold } from '../input/stick';
+
+export interface StickSettings {
+  /** Left-stick deflection needed to leave the centre (0..1). */
+  deadzone: number;
+  /** Draw the live left-stick position over the compass. */
+  showPosition: boolean;
+}
 
 export interface ViewInfo {
   audioStarted: boolean;
   gamepad: string | null;
   /** null until audio is started (MIDI access is requested then). */
   midi: { available: boolean; ports: { id: string; name: string }[]; selected: string | null } | null;
+  stick: StickSettings;
 }
 
 export interface ViewCallbacks {
@@ -24,6 +33,8 @@ export interface ViewCallbacks {
   onFx(param: FxParam, value: number): void;
   onPreset(index: number): void;
   onMidiSelect(id: string | null): void;
+  onDeadzone(value: number): void;
+  onShowStick(show: boolean): void;
 }
 
 export interface ViewOptions {
@@ -35,6 +46,8 @@ export interface ViewOptions {
 // 3×3 compass layout; null is the centre.
 const COMPASS: (Direction | null)[] = ['UL', 'U', 'UR', 'L', null, 'R', 'DL', 'D', 'DR'];
 const ARROWS: Record<Direction, string> = { U: '↑', UR: '↗', R: '→', DR: '↘', D: '↓', DL: '↙', L: '←', UL: '↖' };
+/** Angles (degrees, counter-clockwise from →) of the 8 sector edges. */
+const SECTOR_EDGES = Array.from({ length: 8 }, (_, i) => 22.5 + i * 45);
 
 const FX_PAGE_TITLES = ['Filtre', 'Delay', 'Reverb · Chorus'];
 const FX_LABELS: Record<FxParam, string> = {
@@ -61,6 +74,7 @@ const HELP = `
       <li><kbd>View</kbd> mode de jeu · <kbd>LT</kbd> + <kbd>View</kbd> vitesse strum / motif arp</li>
       <li><kbd>Menu</kbd> mode du joystick</li>
       <li><kbd>Stick D</kbd> effets (la valeur reste en place) · <kbd>R3</kbd> page suivante</li>
+      <li>Zone morte et repère du stick G réglables sous la boussole</li>
     </ul>
   </div>
   <div>
@@ -85,8 +99,24 @@ export function createView(root: HTMLElement, options: ViewOptions, callbacks: V
       </div>
     </header>
     <section class="stage">
-      <div class="compass" data-compass>
-        ${COMPASS.map((d) => `<div class="cell${d ? '' : ' centre'}" data-dir="${d ?? ''}"><b>${d ? ARROWS[d] : ''}</b><span></span></div>`).join('')}
+      <div class="stick-col">
+        <div class="compass" data-compass>
+          ${COMPASS.map((d) => `<div class="cell${d ? '' : ' centre'}" data-dir="${d ?? ''}"><b>${d ? ARROWS[d] : ''}</b><span></span></div>`).join('')}
+          <svg class="stick-view off" data-stick-view viewBox="-1 -1 2 2" aria-hidden="true">
+            <circle class="range" r="1"></circle>
+            <circle class="deadzone" data-deadzone></circle>
+            <circle class="exit" data-exit></circle>
+            ${SECTOR_EDGES.map(() => '<line class="edge"></line>').join('')}
+            <circle class="dot" data-dot r="0.07"></circle>
+          </svg>
+        </div>
+        <div class="stick-settings">
+          <label class="deadzone-setting">
+            <span>Zone morte du stick G <output data-deadzone-value></output></span>
+            <input type="range" min="${DEADZONE_RANGE.min}" max="${DEADZONE_RANGE.max}" step="0.01" data-deadzone-input>
+          </label>
+          <label class="check"><input type="checkbox" data-show-stick> Afficher la position du stick</label>
+        </div>
       </div>
       <div class="screen">
         <div class="roman" data-roman></div>
@@ -136,6 +166,11 @@ export function createView(root: HTMLElement, options: ViewOptions, callbacks: V
   const fxPages = $$('.fx-page');
   const midiSelect = $<HTMLSelectElement>('[data-midi]');
   const presetSelect = $<HTMLSelectElement>('[data-preset]');
+  const stickView = $<SVGSVGElement>('[data-stick-view]');
+  const dot = $<SVGCircleElement>('[data-dot]');
+  const edges = $$<SVGLineElement>('[data-stick-view] .edge');
+  const deadzoneInput = $<HTMLInputElement>('[data-deadzone-input]');
+  const showStickInput = $<HTMLInputElement>('[data-show-stick]');
 
   $('[data-start]').addEventListener('click', () => callbacks.onStart());
 
@@ -160,8 +195,45 @@ export function createView(root: HTMLElement, options: ViewOptions, callbacks: V
   );
   presetSelect.addEventListener('change', () => callbacks.onPreset(Number(presetSelect.value)));
   midiSelect.addEventListener('change', () => callbacks.onMidiSelect(midiSelect.value || null));
+  deadzoneInput.addEventListener('input', () => callbacks.onDeadzone(deadzoneInput.valueAsNumber));
+  showStickInput.addEventListener('change', () => callbacks.onShowStick(showStickInput.checked));
 
   let midiPortsKey = '';
+  let drawnDeadzone = NaN;
+  let dotKey = '';
+
+  /** Redraws the deadzone rings and the sector edges that start at the deadzone. */
+  function drawDeadzone(deadzone: number): void {
+    if (deadzone === drawnDeadzone) return;
+    drawnDeadzone = deadzone;
+    $('[data-deadzone]').setAttribute('r', String(deadzone));
+    $('[data-exit]').setAttribute('r', String(exitThreshold(deadzone)));
+    edges.forEach((line, i) => {
+      // SVG y points down; the stick's y points up.
+      const rad = (SECTOR_EDGES[i] * Math.PI) / 180;
+      const [cos, sin] = [Math.cos(rad), -Math.sin(rad)];
+      line.setAttribute('x1', String(cos * deadzone));
+      line.setAttribute('y1', String(sin * deadzone));
+      line.setAttribute('x2', String(cos));
+      line.setAttribute('y2', String(sin));
+    });
+  }
+
+  /**
+   * Moves the left-stick dot; called every frame since the position changes without a state change.
+   * null hides the whole overlay (option off or no gamepad).
+   */
+  function renderStick(pos: { x: number; y: number } | null): void {
+    const key = pos ? `${pos.x.toFixed(3)},${pos.y.toFixed(3)}` : '';
+    if (key === dotKey) return;
+    dotKey = key;
+    stickView.classList.toggle('off', pos === null);
+    if (!pos) return;
+    // Clamp to the unit circle: some pads report corners slightly past 1.
+    const scale = Math.min(1, 1 / Math.hypot(pos.x, pos.y));
+    dot.setAttribute('cx', String(pos.x * scale));
+    dot.setAttribute('cy', String(-pos.y * scale));
+  }
 
   function render(s: State, info: ViewInfo): void {
     $('[data-overlay]').hidden = info.audioStarted;
@@ -196,6 +268,12 @@ export function createView(root: HTMLElement, options: ViewOptions, callbacks: V
       }
     });
 
+    dot.classList.toggle('engaged', s.direction !== null);
+    drawDeadzone(info.stick.deadzone);
+    if (!deadzoneInput.matches(':active')) deadzoneInput.valueAsNumber = info.stick.deadzone;
+    $('[data-deadzone-value]').textContent = `${Math.round(info.stick.deadzone * 100)} %`;
+    showStickInput.checked = info.stick.showPosition;
+
     const chord = activeChord(s);
     $('[data-roman]').textContent = degree !== null ? ROMAN_NUMERALS[degree] : '';
     $('[data-chord]').textContent = chord?.name ?? '—';
@@ -228,5 +306,5 @@ export function createView(root: HTMLElement, options: ViewOptions, callbacks: V
     });
   }
 
-  return { render };
+  return { render, renderStick };
 }

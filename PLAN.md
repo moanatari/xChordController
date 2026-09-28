@@ -73,7 +73,7 @@ tests/                 core/chord, core/state, input/stick
 | Contrôle | Fonction |
 |---|---|
 | **A / RB / RT / X / B / Y / LB** | accords I / ii / iii / IV / V / vi / vii°. I, IV, V et vi sont sous le pouce droit |
-| **Stick gauche** | modifie l'accord tenu. Relâcher revient à l'accord de base |
+| **Stick gauche** | modifie l'accord tenu. Relâcher revient à l'accord de base. La zone morte centrale (15 à 85 %, 50 % par défaut) se règle sous la boussole, qui peut aussi afficher la position du stick, la zone morte et les limites des 8 secteurs. Ces réglages sont conservés dans le navigateur |
 | **L3** | verrouille la modification en cours sur cet accord. L3 avec le stick au centre déverrouille |
 | Accord tenu + **LT** | inversion suivante (fondamentale → 1re → 2e) |
 | **D-pad ← →** | tonalité −/+ 1 demi-ton |
@@ -138,7 +138,7 @@ Quand un accord est tenu et que le stick change de direction, seules les notes q
 - [x] 6. Sortie MIDI : sélecteur de port, notes et CC
 - [x] 7. Extras : Strum, Arp calé sur le BPM, inversions, verrouillage d'accord, presets, tonalité et octave
 - [x] 8. UI : accord joué, boussole des 8 directions, pads, jauges d'effets, aide
-- [ ] 9. **Test avec la vraie manette**, puis réglages : seuils du stick, vitesse des effets, layout des boutons, volumes des presets
+- [ ] 9. **Test avec la vraie manette**, puis réglages : vitesse des effets, layout des boutons, volumes des presets. La zone morte du stick gauche est réglable dans l'UI, avec un repère visuel de sa position
 - [x] 10. Déploiement GitHub Pages : `base: './'` dans Vite et workflow GitHub Actions (tests, build, publication de `dist/`)
 
 ### Idées pour la suite (V2)
@@ -152,7 +152,7 @@ Quand un accord est tenu et que le stick change de direction, seules les notes q
 
 ## Vérification
 
-- `npm test` : 19 tests sur le cœur. Ils couvrent les 7 triades, les modificateurs des 3 modes, les inversions, les registres par tonalité, la validité de toutes les combinaisons mode × direction × degré × inversion, le reducer (pile d'accords, lock, inversion, D-pad, chromatic, effets) et la quantification du stick.
+- `npm test` : 21 tests sur le cœur. Ils couvrent les 7 triades, les modificateurs des 3 modes, les inversions, les registres par tonalité, la validité de toutes les combinaisons mode × direction × degré × inversion, le reducer (pile d'accords, lock, inversion, D-pad, chromatic, effets) et la quantification du stick (dont la zone morte réglable).
 - `npm run build` : le typecheck et le build passent.
 - **Test manuel** :
   1. `npm run dev` puis ouvrir Chrome ou Edge avec la manette branchée et cliquer sur « Démarrer ».

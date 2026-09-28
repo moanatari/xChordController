@@ -93,6 +93,8 @@ Tiens un accord et pousse le stick : l'accord change aussitôt, sans coupure du 
 > En mode **Default**, les accords majeurs et mineurs réagissent différemment. Par exemple, → donne *Cmaj7* sur le I mais *Dm7* sur le ii.
 > En mode **Chromatic**, quand aucun accord n'est tenu, ← et → transposent la tonalité d'un demi-ton.
 
+Sous la boussole, tu peux régler la **zone morte** : la partie centrale du stick qui est ignorée. Plus elle est grande, plus il faut pousser pour changer l'accord. L'option **Afficher la position du stick** dessine sur la boussole un point qui suit le stick, avec la zone morte et les limites des 8 directions. Ces réglages sont gardés d'une visite à l'autre.
+
 ### Stick droit : les effets
 
 Le stick agit comme une **molette** : tu pousses et la valeur bouge, tu lâches et elle reste en place. Tu peux donc régler un effet puis revenir aux boutons. **R3** passe à la page suivante.

@@ -7,8 +7,9 @@ import { FX_PARAMS, activeChord, initialState, reduce, type InputEvent, type Sta
 import { GamepadInput } from './input/gamepad';
 import { attachKeyboard } from './input/keyboard';
 import { XBOX_MAPPING, chordButtonLabels } from './input/mapping';
+import { DEADZONE_RANGE, DEFAULT_DEADZONE } from './input/stick';
 import { MidiOut } from './midi/midiOut';
-import { createView, type ViewInfo } from './ui/view';
+import { createView, type StickSettings, type ViewInfo } from './ui/view';
 import './ui/style.css';
 
 // Small look-ahead: live notes use Tone.immediate(), only the arpeggiator is scheduled ahead.
@@ -30,6 +31,40 @@ const playSettings = (s: State): PlaySettings => ({
   strumSpeed: s.strumSpeed,
   arpPattern: s.arpPattern,
 });
+
+const STICK_SETTINGS_KEY = 'xchord.stick';
+
+/** Controller settings survive reloads; storage may be unavailable, so fall back to defaults. */
+function loadStickSettings(): StickSettings {
+  const defaults: StickSettings = { deadzone: DEFAULT_DEADZONE, showPosition: true };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STICK_SETTINGS_KEY) ?? '{}');
+    const deadzone = typeof saved.deadzone === 'number' && Number.isFinite(saved.deadzone) ? saved.deadzone : defaults.deadzone;
+    return {
+      deadzone: Math.min(DEADZONE_RANGE.max, Math.max(DEADZONE_RANGE.min, deadzone)),
+      showPosition: typeof saved.showPosition === 'boolean' ? saved.showPosition : defaults.showPosition,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveStickSettings(settings: StickSettings): void {
+  try {
+    localStorage.setItem(STICK_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Not persisted; the setting still applies for this session.
+  }
+}
+
+let stickSettings = loadStickSettings();
+
+function setStickSettings(patch: Partial<StickSettings>): void {
+  stickSettings = { ...stickSettings, ...patch };
+  gamepad.deadzone = stickSettings.deadzone;
+  saveStickSettings(stickSettings);
+  dirty = true;
+}
 
 const chordNotes = (s: State): number[] => activeChord(s)?.notes ?? [];
 
@@ -103,10 +138,13 @@ const view = createView(
       if (audio?.midi) FX_PARAMS.forEach((p) => audio!.midi!.fx(p, state.fx[p]));
       dirty = true;
     },
+    onDeadzone: (deadzone) => setStickSettings({ deadzone }),
+    onShowStick: (showPosition) => setStickSettings({ showPosition }),
   },
 );
 
 const gamepad = new GamepadInput(XBOX_MAPPING, dispatch);
+gamepad.deadzone = stickSettings.deadzone;
 attachKeyboard(window, dispatch);
 window.addEventListener('gamepadconnected', () => (dirty = true));
 window.addEventListener('gamepaddisconnected', () => (dirty = true));
@@ -117,6 +155,7 @@ function viewInfo(): ViewInfo {
     audioStarted: audio !== null,
     gamepad: gamepad.name,
     midi: audio ? { available: midi != null, ports: midi?.ports ?? [], selected: midi?.selected ?? null } : null,
+    stick: stickSettings,
   };
 }
 
@@ -135,6 +174,7 @@ function frame(now: number): void {
     dirty = false;
     view.render(state, viewInfo());
   }
+  view.renderStick(stickSettings.showPosition ? gamepad.left : null);
   requestAnimationFrame(frame);
 }
 

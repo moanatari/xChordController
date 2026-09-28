@@ -23,6 +23,26 @@ describe('StickQuantizer', () => {
     expect(q.update(0.2, 0)).toBeNull();
   });
 
+  it('uses a custom deadzone, leaving the centre at 70 % of it', () => {
+    const small = new StickQuantizer(0.3);
+    expect(small.update(0.28, 0)).toBeNull();
+    expect(small.update(0.32, 0)).toBe('R');
+    expect(small.update(0.22, 0)).toBe('R');
+    expect(small.update(0.2, 0)).toBeNull();
+
+    const large = new StickQuantizer(0.8);
+    expect(large.update(0.7, 0)).toBeNull();
+    expect(large.update(0.85, 0)).toBe('R');
+    expect(large.update(0.55, 0)).toBeNull();
+  });
+
+  it('applies a deadzone change on the next update', () => {
+    const q = new StickQuantizer();
+    expect(q.update(0, 0.4)).toBeNull();
+    q.deadzone = 0.3;
+    expect(q.update(0, 0.4)).toBe('U');
+  });
+
   it('holds its direction slightly past a sector edge', () => {
     const q = new StickQuantizer();
     q.update(1, 0);
